@@ -1,7 +1,7 @@
 using System;
 using System.Linq;
 using System.Threading.Tasks;
-using BaGet.Core.Services;
+using BaGet.Core.Search;
 using BaGet.Extensions;
 using BaGet.Protocol;
 using Microsoft.AspNetCore.Mvc;
@@ -9,7 +9,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace BaGet.Controllers
 {
     using ProtocolSearchResult = Protocol.SearchResult;
-    using QuerySearchResult = Core.Services.SearchResult;
+    using QuerySearchResult = Core.Search.SearchResult;
 
     public class SearchController : Controller
     {
@@ -43,14 +43,18 @@ namespace BaGet.Controllers
 
             return new SearchResponse(
                 totalHits: results.Count,
-                data: results.Select(ToSearchResult).ToList());
+                data: results.Select(ToSearchResult).ToList(),
+                context: SearchContext.Default(Url.RegistrationsBase()));
         }
 
         public async Task<ActionResult<AutocompleteResult>> Autocomplete([FromQuery(Name = "q")] string query = null)
         {
             var results = await _searchService.AutocompleteAsync(query);
 
-            return new AutocompleteResult(results.Count, results);
+            return new AutocompleteResult(
+                results.Count,
+                results,
+                AutocompleteContext.Default);
         }
 
         public async Task<ActionResult<DependentResult>> Dependents([FromQuery(Name = "packageId")] string packageId)

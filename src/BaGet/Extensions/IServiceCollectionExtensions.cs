@@ -8,16 +8,23 @@ using BaGet.AWS.Extensions;
 using BaGet.Azure.Configuration;
 using BaGet.Azure.Extensions;
 using BaGet.Azure.Search;
+using BaGet.Core.Authentication;
 using BaGet.Core.Configuration;
 using BaGet.Core.Entities;
 using BaGet.Core.Extensions;
+using BaGet.Core.Indexing;
 using BaGet.Core.Mirror;
+using BaGet.Core.Search;
 using BaGet.Core.Server.Extensions;
-using BaGet.Core.Services;
+using BaGet.Core.State;
+using BaGet.Core.Storage;
 using BaGet.Database.MySql;
 using BaGet.Database.PostgreSql;
 using BaGet.Database.Sqlite;
 using BaGet.Database.SqlServer;
+using BaGet.GCP.Configuration;
+using BaGet.GCP.Extensions;
+using BaGet.GCP.Services;
 using BaGet.Protocol;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -44,6 +51,7 @@ namespace BaGet.Extensions
 
             services.ConfigureAzure(configuration);
             services.ConfigureAws(configuration);
+            services.ConfigureGcp(configuration);
 
             if (httpServices)
             {
@@ -144,14 +152,25 @@ namespace BaGet.Extensions
             return services;
         }
 
+        public static IServiceCollection ConfigureGcp(
+            this IServiceCollection services,
+            IConfiguration configuration)
+        {
+            services.ConfigureAndValidate<GoogleCloudStorageOptions>(configuration.GetSection(nameof(BaGetOptions.Storage)));
+
+            return services;
+        }
+
         public static IServiceCollection AddStorageProviders(this IServiceCollection services)
         {
+            services.AddSingleton<NullStorageService>();
             services.AddTransient<FileStorageService>();
             services.AddTransient<IPackageStorageService, PackageStorageService>();
             services.AddTransient<ISymbolStorageService, SymbolStorageService>();
 
             services.AddBlobStorageService();
             services.AddS3StorageService();
+            services.AddGoogleCloudStorageService();
 
             services.AddTransient<IStorageService>(provider =>
             {
@@ -167,6 +186,12 @@ namespace BaGet.Extensions
 
                     case StorageType.AwsS3:
                         return provider.GetRequiredService<S3StorageService>();
+
+                    case StorageType.GoogleCloud:
+                        return provider.GetRequiredService<GoogleCloudStorageService>();
+
+                    case StorageType.Null:
+                        return provider.GetRequiredService<NullStorageService>();
 
                     default:
                         throw new InvalidOperationException(
@@ -191,6 +216,9 @@ namespace BaGet.Extensions
                     case SearchType.Azure:
                         return provider.GetRequiredService<AzureSearchService>();
 
+                    case SearchType.Null:
+                        return provider.GetRequiredService<NullSearchService>();
+
                     default:
                         throw new InvalidOperationException(
                             $"Unsupported search service: {options.Value.Type}");
@@ -198,6 +226,7 @@ namespace BaGet.Extensions
             });
 
             services.AddTransient<DatabaseSearchService>();
+            services.AddSingleton<NullSearchService>();
             services.AddAzureSearch();
 
             return services;

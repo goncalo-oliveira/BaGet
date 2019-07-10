@@ -1,4 +1,4 @@
-﻿namespace BaGet.Core.Configuration
+namespace BaGet.Core.Configuration
 {
     public class StorageOptions
     {
@@ -9,6 +9,8 @@
     {
         FileSystem = 0,
         AzureBlobStorage = 1,
-        AwsS3 = 2
+        AwsS3 = 2,
+        GoogleCloud = 3,
+        Null = 4,
     }
 }
